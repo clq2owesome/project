@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC  
+					"-//mybatis.org//DTD Config 3.0//EN"  
+					"http://mybatis.org/dtd/mybatis-3-config.dtd">
+					
+<configuration>    
+	<settings>
+		<setting name="logImpl" value="LOG4J"/>  <!-- 配置使用log4j日记系统 -->
+	</settings>
+	<typeAliases>
+		<typeAlias type="com.clq.entity.User" alias="user"/>
+	</typeAliases>
+	<mappers>      
+	  	<mapper resource="sqlMap/user.xml" />      
+	 </mappers>  
+ </configuration> 
+ 

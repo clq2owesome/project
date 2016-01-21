@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--事务管理需加与tx有关的东西 -->
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop" 
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:jee="http://www.springframework.org/schema/jee"
+	xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:task="http://www.springframework.org/schema/task"
+	
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+         http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/context
+         http://www.springframework.org/schema/context/spring-context.xsd
+         http://www.springframework.org/schema/aop
+         http://www.springframework.org/schema/aop/spring-aop-3.2.xsd
+         http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee.xsd
+         http://www.springframework.org/schema/tx  
+         http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+	   <!--spring可以自动去扫描base-pack下面或者子包下面的java文件，如果扫描到有@Component @Controller@Service等这些注解的类，
+   		  则把这些类注册为bean;    
+   		  如果配置了<context:component-scan>那么<context:annotation-config/>标签就可以不用在xml中配置了，因为前者包含了后者-->
+	<context:component-scan base-package="com.clq.*" />
+
+	<!--dbcp连接池 start -->
+	<!--dbcp连接池，此法将配置信息写在jdbc.properties中 -->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close">
+		<property name="driverClassName" value="${jdbc.driverClassName}" />
+		<property name="url" value="${jdbc.url}" />
+		<property name="username" value="${jdbc.username}" />
+		<property name="password" value="${jdbc.password}" />
+	</bean>
+	<!-- <bean
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<value>classpath:jdbc.properties</value>
+		</property>
+		<property name="ignoreResourceNotFound"  value="true"/>
+        <property name="ignoreUnresolvablePlaceholders" value="true"/>
+        <property name="valueSeparator"  value=":=" />
+	</bean> -->
+	<!-- 用上面的方法也行 -->
+	<context:property-placeholder location="classpath:resources/jdbc.properties"  
+													ignore-unresolvable="true" ignore-resource-not-found="true"/>
+	<!--dbcp连接池 End -->
+	
+	<!--  Spring jdbcTemplate  开始  -->
+	<bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate" p:dataSource-ref="dataSource"/>
+	<!--  Spring jdbcTemplate  结束  -->
+	
+	<!--  clqOrm   开始   -->
+	<bean id="clqOrm" class="com.clq.core.ClqOrm">
+        <property name="entityList">
+            <list>
+                <value>com.clq.entity</value>
+            </list>
+        </property>
+    </bean>
+	<!--  clqOrm   结束   -->
+	
+	<!--   ClqDao  开始 -->
+	<bean id="clqDao" class="com.clq.core.ClqDao"
+        p:jdbcTemplate-ref="jdbcTemplate"
+        p:clqOrm-ref="clqOrm" 
+        p:memCachedClient-ref="mcc" 
+        p:cacheListener-ref="cacheListener"
+    />
+    <!--   ClqDao  结束 -->
+	
+	<jee:jndi-lookup id="props" jndi-name="java:comp/env/props"/><!--  加载外部数据源 -->
+	<!-- 加载properties配置文件 -->
+	<bean id="properties" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+		<property name="locations">
+			<list>
+				<!-- 加载外部文件  -->
+				<!--  示例1   jndi方式 -->
+				<value>file:#{props}</value>
+				<!--  示例2   直接引用方式 -->
+				<!-- <value>file:E:\resin-3.1.8-with-r\resin-pro-3.1.8-with-r\conf\best_envirement.properties</value> -->
+				<value>classpath:resources/application.properties</value>
+			</list>
+		</property>
+	</bean>
+	<bean id="sysConfig" class="com.clq.utils.SysConfig">
+        <constructor-arg ref="properties" />
+    </bean>
+	<!-- 加载properties配置文件 -->
+	
+	<!--事务管理XML配置 Start-->
+	<bean id="txManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<tx:advice id="txAdvice" transaction-manager="txManager">
+		<tx:attributes>
+			<tx:method name="get*" read-only="true" />
+			<tx:method name="trans*" propagation="REQUIRED"/>
+		</tx:attributes>
+	</tx:advice>
+	
+	<aop:config>
+		<aop:pointcut id="fooServiceOperation"
+			expression="execution(public * com.clq.service..*.*(..))" />
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="fooServiceOperation" />
+	</aop:config>
+	<!--事务管理XML配置 End-->
+	
+	<!-- Mybatis配置      开始  -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<!-- <property name="mapperLocations" value="classpath:resources/user.xml" /> --><!-- 指定单一文件 -->
+		<property name="configLocation" value="classpath:resources/sqlMapConfig.xml" /><!-- 指定总文件 -->
+	</bean>
+	
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+       <constructor-arg index="0" ref="sqlSessionFactory" />
+ 	</bean>
+	<!-- Mybatis配置      结束  -->
+	
+	<!-- Memcached配置     开始  -->
+	<bean id="mccSocketIOPool" class="com.whalin.MemCached.SockIOPool"
+        factory-method="getInstance"
+        init-method="initialize"
+        destroy-method="shutDown"
+        p:servers="${memcached.servers}" 
+        p:maxConn="${memcached.maxConn}"
+        p:initConn="${memcached.initConn}"
+        p:socketConnectTO="${memcached.socketConnectTO}"
+        p:socketTO="${memcached.socketTO}"
+        p:maintSleep="${memcached.maintSleep}"
+        p:failover="${memcached.failover}"
+        p:failback="${memcached.failback}"
+        p:nagle="${memcached.nagle}" >
+        <constructor-arg value="clq"/>
+    </bean>
+    <context:property-placeholder location="classpath:resources/memcached.properties" 
+    												 ignore-unresolvable="true" ignore-resource-not-found="true"/>
+
+    <bean id="mcc" class="com.whalin.MemCached.MemCachedClient" p:sanitizeKeys="false" >
+        <constructor-arg value="clq"/>
+    </bean>
+    
+    <bean id="cacheListener"  class="com.clq.core.CacheListener"/><!--缓存监听器，上线可去掉，主要是看处理时间  -->
+	<!-- Memcached配置     结束 -->
+	
+	
+	<!--  bean管理工具 -->
+	<bean id="springContextHolder" class="com.clq.utils.SpringContextHolder"/>
+	<!--  bean管理工具 -->
+	
+</beans>

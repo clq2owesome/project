@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<taglib version="2.0" xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee web-jsptaglibrary_2_0.xsd">
+  <tlib-version>1.0</tlib-version>
+  <short-name>memcached</short-name>
+  <uri>/WEB-INF/memcached</uri>
+  <tag>
+    <name>cache</name>
+    <tag-class>com.clq.utils.MemcachedTag</tag-class>
+
+    <attribute>
+      <name>time</name>
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+    </attribute>
+
+    <attribute>
+      <name>key</name>
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+    </attribute>
+
+    <attribute>
+      <name>refresh</name>
+      <required>false</required>
+      <rtexprvalue>true</rtexprvalue>
+    </attribute>
+    
+       <attribute>
+     <name>cacheBlockName</name>
+     <required>false</required>
+     <rtexprvalue>true</rtexprvalue>
+ 	</attribute>
+    
+    <attribute>
+     <name>cacheBlockType</name>
+     <required>false</required>
+     <rtexprvalue>true</rtexprvalue>
+ 	</attribute>
+ 	
+ 	<attribute>
+     <name>isSaveDB</name>
+     <required>false</required>
+     <rtexprvalue>true</rtexprvalue>
+ 	</attribute>
+ 	
+  </tag>
+</taglib>
